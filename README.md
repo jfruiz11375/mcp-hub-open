@@ -22,6 +22,14 @@ It is designed to help teams:
 - verify packages with checksums or detached signatures
 - expose a web UI for testing and operations
 
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/images/dashboard.png)
+
+### Add Server Wizard
+![Add Server Wizard](docs/images/add-server-wizard.png)
+
 ## What this repo is
 
 This repo is a working starter kit for community testing and contribution.
