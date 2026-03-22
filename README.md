@@ -28,7 +28,7 @@ It is designed to help teams:
 ![Dashboard](docs/images/dashboard.png)
 
 ### Add Server Wizard
-![Add Server Wizard](docs/images/add-server-wizard.png)
+![Add Server Wizard](docs/images/add-mcp-server.png)
 
 ## What this repo is
 
