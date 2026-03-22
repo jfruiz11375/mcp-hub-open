@@ -1,0 +1,302 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f9;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+button.primary {
+  background: #0f172a;
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  margin-top: 0.35rem;
+  background: white;
+}
+
+label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  background: #020617;
+  color: #cbd5e1;
+  padding: 1rem;
+  border-radius: 16px;
+  min-height: 220px;
+  overflow: auto;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #020617;
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sidebar h1,
+.page-header h2,
+.card h2 {
+  margin: 0;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar nav a {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  color: #cbd5e1;
+  text-decoration: none;
+}
+
+.sidebar nav a.active {
+  background: white;
+  color: #020617;
+  font-weight: 700;
+}
+
+.sidebar-footnote {
+  margin-top: auto;
+}
+
+.main-content {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+  gap: 1rem;
+}
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  padding: 1rem;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+}
+
+.stat-card {
+  min-height: 120px;
+}
+
+.stat-value {
+  font-size: 2.3rem;
+  font-weight: 800;
+  margin-top: 0.5rem;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.section-header.compact {
+  margin-bottom: 0.75rem;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.85rem 0.6rem;
+  border-top: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.badge-running { background: #dcfce7; color: #166534; }
+.badge-error { background: #fee2e2; color: #991b1b; }
+.badge-stopped, .badge-draft { background: #e2e8f0; color: #334155; }
+.badge-starting { background: #fef3c7; color: #92400e; }
+
+.link-button {
+  background: transparent;
+  padding: 0;
+  color: #0f172a;
+  text-decoration: underline;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.grid-two,
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.details-grid strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.busy-pill {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.error-banner {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+.empty-state-cell,
+.truncate-cell {
+  color: #64748b;
+}
+
+.logs-card pre {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .content-grid,
+  .stats-grid,
+  .grid-two,
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.centered-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.auth-card {
+  width: min(480px, 92vw);
+}

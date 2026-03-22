@@ -1,0 +1,27 @@
+{
+  "id": "oracle-oem",
+  "name": "Oracle OEM MCP",
+  "description": "Example server manifest with Docker isolation and checksum verification.",
+  "repoUrl": "https://github.com/example/oracle-oem-mcp",
+  "branch": "main",
+  "runtimeKind": "node",
+  "transportType": "stdio",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "startCommand": "node dist/index.js",
+  "targetNodeId": "node-local",
+  "isolation": {
+    "mode": "docker",
+    "dockerImage": "node:20-alpine"
+  },
+  "packageVerification": {
+    "mode": "checksum",
+    "targetPath": "package.json",
+    "expectedSha256": "replace-with-real-sha256"
+  },
+  "env": [
+    { "key": "OEM_URL", "value": "https://oem.example.com", "secret": false },
+    { "key": "OEM_USER", "value": "monitor_user", "secret": false },
+    { "key": "OEM_PASSWORD", "value": "replace-me", "secret": true }
+  ]
+}
