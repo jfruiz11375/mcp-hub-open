@@ -1,5 +1,13 @@
 # MCP Hub Open
 
+![Status](https://img.shields.io/badge/status-alpha-orange)
+![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)
+
+Open-source MCP Hub for installing, configuring, securing, and managing MCP servers from one central interface.
+
+> **Project Status:** Early MVP / alpha  
+> This project is functional for testing and community contribution, but it is not yet production-hardened. Expect active changes to APIs, configuration, storage, and security features as the project evolves.
+
 MCP Hub Open is an open-source control plane for managing many MCP servers from one place.
 
 It is designed to help teams:
