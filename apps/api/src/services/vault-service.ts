@@ -28,7 +28,7 @@ export class VaultService {
 
   decrypt(secretText: string): string {
     if (!secretText.startsWith(`${PREFIX}:`)) return secretText;
-    const [, ivText, tagText, payloadText] = secretText.split(":");
+    const [, , ivText, tagText, payloadText] = secretText.split(":");
     const decipher = crypto.createDecipheriv("aes-256-gcm", deriveKey(), fromB64(ivText));
     decipher.setAuthTag(fromB64(tagText));
     const plain = Buffer.concat([decipher.update(fromB64(payloadText)), decipher.final()]);
