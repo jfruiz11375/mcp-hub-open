@@ -24,7 +24,8 @@ export class NodeService {
       return;
     }
 
-    const nodes = await this.listNodes();
+    const payload = (await fs.readJson(config.nodesFile)) as NodesFile;
+    const nodes = payload.nodes;
     if (!nodes.some((node) => node.id === config.localNodeId)) {
       const now = new Date().toISOString();
       nodes.push({
