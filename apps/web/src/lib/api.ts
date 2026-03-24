@@ -60,7 +60,7 @@ export interface ClusterNode {
   lastHeartbeatAt: string;
 }
 
-const baseUrl = "http://localhost:4010";
+const baseUrl = "";
 let token: string | null = null;
 
 export function setToken(value: string | null) {

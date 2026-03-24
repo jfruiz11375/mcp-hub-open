@@ -5,6 +5,8 @@ import { ServerTable } from "./components/ServerTable";
 import { ServerForm } from "./components/ServerForm";
 import { LogsPanel } from "./components/LogsPanel";
 
+type Page = "dashboard" | "servers" | "nodes" | "logs" | "settings";
+
 export default function App() {
   const [servers, setServers] = useState<ManagedServer[]>([]);
   const [nodes, setNodes] = useState<ClusterNode[]>([]);
@@ -17,6 +19,7 @@ export default function App() {
   const [email, setEmail] = useState("admin@example.com");
   const [password, setPassword] = useState("admin123!");
   const [userRole, setUserRole] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<Page>("dashboard");
 
   async function refresh() {
     try {
@@ -137,12 +140,11 @@ export default function App() {
           <p className="muted">Secure control plane for many MCP servers</p>
         </div>
         <nav>
-          <a className="active">Dashboard</a>
-          <a>Servers</a>
-          <a>Nodes</a>
-          <a>Registry</a>
-          <a>Logs</a>
-          <a>Settings</a>
+          <a className={currentPage === "dashboard" ? "active" : ""} onClick={() => setCurrentPage("dashboard")} style={{ cursor: "pointer" }}>Dashboard</a>
+          <a className={currentPage === "servers" ? "active" : ""} onClick={() => setCurrentPage("servers")} style={{ cursor: "pointer" }}>Servers</a>
+          <a className={currentPage === "nodes" ? "active" : ""} onClick={() => setCurrentPage("nodes")} style={{ cursor: "pointer" }}>Nodes</a>
+          <a className={currentPage === "logs" ? "active" : ""} onClick={() => setCurrentPage("logs")} style={{ cursor: "pointer" }}>Logs</a>
+          <a className={currentPage === "settings" ? "active" : ""} onClick={() => setCurrentPage("settings")} style={{ cursor: "pointer" }}>Settings</a>
         </nav>
         <div className="sidebar-footnote muted">
           Auth: {authRequired ? `enabled (${userRole || "signed in"})` : "disabled"}
@@ -152,65 +154,84 @@ export default function App() {
       <main className="main-content">
         <header className="page-header">
           <div>
-            <h2>Dashboard</h2>
-            <p className="muted">OAuth-ready auth, secret vaults, Docker isolation, RBAC, nodes, and MCP proxying</p>
+            {currentPage === "dashboard" && <><h2>Dashboard</h2><p className="muted">OAuth-ready auth, secret vaults, Docker isolation, RBAC, nodes, and MCP proxying</p></>}
+            {currentPage === "servers" && <><h2>Servers</h2><p className="muted">Manage and operate your registered MCP servers</p></>}
+            {currentPage === "nodes" && <><h2>Cluster Nodes</h2><p className="muted">Multi-node orchestration and heartbeat tracking</p></>}
+            {currentPage === "logs" && <><h2>Logs</h2><p className="muted">Runtime output for the selected server</p></>}
+            {currentPage === "settings" && <><h2>Settings</h2><p className="muted">Current environment configuration</p></>}
           </div>
           {busy && <div className="busy-pill">Working: {busy}</div>}
         </header>
 
         {error && <div className="error-banner">{error}</div>}
 
-        <section className="stats-grid">
-          <StatCard label="Total servers" value={stats.total} />
-          <StatCard label="Running" value={stats.running} />
-          <StatCard label="Installed" value={stats.installed} />
-          <StatCard label="Errors" value={stats.errors} />
-          <StatCard label="Docker isolated" value={stats.dockerIsolated} />
-          <StatCard label="Cluster nodes" value={nodes.length} />
-        </section>
+        {currentPage === "dashboard" && (
+          <section className="stats-grid">
+            <StatCard label="Total servers" value={stats.total} />
+            <StatCard label="Running" value={stats.running} />
+            <StatCard label="Installed" value={stats.installed} />
+            <StatCard label="Errors" value={stats.errors} />
+            <StatCard label="Docker isolated" value={stats.dockerIsolated} />
+            <StatCard label="Cluster nodes" value={nodes.length} />
+          </section>
+        )}
 
-        <section className="content-grid">
-          <div className="left-column">
-            <ServerTable
-              servers={servers}
-              onSelect={(server) => setSelected(server)}
-              onInstall={(id) => withBusy(`install:${id}`, async () => void api.installServer(id))}
-              onStart={(id) => withBusy(`start:${id}`, async () => void api.startServer(id))}
-              onStop={(id) => withBusy(`stop:${id}`, async () => void api.stopServer(id))}
-            />
-
-            <div className="card details-card">
-              <div className="section-header compact">
-                <div>
-                  <h2>Selected Server</h2>
-                  <p className="muted">{selected ? selected.name : "Pick a server from the table"}</p>
+        {currentPage === "servers" && (
+          <section className="content-grid">
+            <div className="left-column">
+              <ServerTable
+                servers={servers}
+                onSelect={(server) => setSelected(server)}
+                onInstall={(id) => withBusy(`install:${id}`, async () => void api.installServer(id))}
+                onStart={(id) => withBusy(`start:${id}`, async () => void api.startServer(id))}
+                onStop={(id) => withBusy(`stop:${id}`, async () => void api.stopServer(id))}
+              />
+              <div className="card details-card">
+                <div className="section-header compact">
+                  <div>
+                    <h2>Selected Server</h2>
+                    <p className="muted">{selected ? selected.name : "Pick a server from the table"}</p>
+                  </div>
                 </div>
+                {selected ? (
+                  <div className="details-grid">
+                    <div><strong>ID</strong><div>{selected.id}</div></div>
+                    <div><strong>Status</strong><div>{selected.status}</div></div>
+                    <div><strong>Target node</strong><div>{selected.targetNodeId || "node-local"}</div></div>
+                    <div><strong>Isolation</strong><div>{selected.isolation?.mode || "process"}</div></div>
+                    <div><strong>Verification</strong><div>{selected.packageVerification?.mode || "none"}</div></div>
+                    <div><strong>Installed path</strong><div>{selected.installedPath || "—"}</div></div>
+                    <div><strong>Working directory</strong><div>{selected.workingDirectory || "—"}</div></div>
+                    <div><strong>Start command</strong><div>{selected.startCommand || "—"}</div></div>
+                    <div><strong>Last error</strong><div>{selected.lastError || "—"}</div></div>
+                  </div>
+                ) : (
+                  <div className="muted">No server selected.</div>
+                )}
               </div>
-
-              {selected ? (
-                <div className="details-grid">
-                  <div><strong>ID</strong><div>{selected.id}</div></div>
-                  <div><strong>Status</strong><div>{selected.status}</div></div>
-                  <div><strong>Target node</strong><div>{selected.targetNodeId || "node-local"}</div></div>
-                  <div><strong>Isolation</strong><div>{selected.isolation?.mode || "process"}</div></div>
-                  <div><strong>Verification</strong><div>{selected.packageVerification?.mode || "none"}</div></div>
-                  <div><strong>Installed path</strong><div>{selected.installedPath || "—"}</div></div>
-                  <div><strong>Working directory</strong><div>{selected.workingDirectory || "—"}</div></div>
-                  <div><strong>Start command</strong><div>{selected.startCommand || "—"}</div></div>
-                  <div><strong>Last error</strong><div>{selected.lastError || "—"}</div></div>
-                </div>
-              ) : (
-                <div className="muted">No server selected.</div>
-              )}
             </div>
+            <div className="right-column">
+              <ServerForm
+                onCreate={async (payload) => {
+                  await api.createServer(payload as never);
+                  await refresh();
+                }}
+              />
+            </div>
+          </section>
+        )}
 
-            <div className="card details-card">
-              <div className="section-header compact">
-                <div>
-                  <h2>Cluster Nodes</h2>
-                  <p className="muted">Multi-node orchestration preview</p>
-                </div>
+        {currentPage === "nodes" && (
+          <div className="card details-card">
+            <div className="section-header compact">
+              <div>
+                <h2>Cluster Nodes</h2>
+                <p className="muted">Registered nodes and their heartbeat status</p>
               </div>
+            </div>
+            {nodes.length === 0 ? (
+              <div className="muted">No nodes registered yet.</div>
+            ) : (
               <div className="details-grid">
                 {nodes.map((node) => (
                   <div key={node.id}>
@@ -221,19 +242,27 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {currentPage === "logs" && (
+          <LogsPanel title={selected?.name || "No server selected"} log={log} />
+        )}
+
+        {currentPage === "settings" && (
+          <div className="card details-card">
+            <div className="section-header compact">
+              <div><h2>Environment</h2><p className="muted">Active runtime configuration</p></div>
+            </div>
+            <div className="details-grid">
+              <div><strong>Auth required</strong><div>{authRequired ? "Yes" : "No"}</div></div>
+              <div><strong>Signed-in role</strong><div>{userRole || "—"}</div></div>
+              <div><strong>API URL</strong><div>http://localhost:4010</div></div>
+              <div><strong>Local node ID</strong><div>node-local</div></div>
             </div>
           </div>
-
-          <div className="right-column">
-            <ServerForm
-              onCreate={async (payload) => {
-                await api.createServer(payload as never);
-                await refresh();
-              }}
-            />
-            <LogsPanel title={selected?.name || "No selection"} log={log} />
-          </div>
-        </section>
+        )}
       </main>
     </div>
   );
