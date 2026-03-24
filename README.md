@@ -118,17 +118,35 @@ npm run dev
 
 ### 4. Open the UI
 
+The frontend runs over **HTTPS** using a self-signed certificate provided by `@vitejs/plugin-basic-ssl`. Your browser will show a certificate warning on first visit — click through to accept it for local development.
+
 Frontend:
 
 ```text
-http://localhost:5173
+https://localhost:5173
 ```
 
-API:
+API (HTTP only in dev):
 
 ```text
 http://localhost:4010
 ```
+
+> **Note:** The API itself runs over plain HTTP in development. The Vite dev server proxies `/api` requests from the HTTPS frontend to the local API, so you do not need to configure TLS on the API for local use. For production deployments, place both services behind a reverse proxy (e.g. nginx or Caddy) that terminates TLS and forwards to each app.
+
+## Web UI navigation
+
+The sidebar provides access to five pages:
+
+| Page | Description |
+|------|-------------|
+| **Dashboard** | Overview stats — total servers, running, installed, errors, Docker-isolated, and cluster node count |
+| **Servers** | Register, install, start, stop, and configure MCP servers |
+| **Nodes** | View registered cluster nodes and their heartbeat status |
+| **Logs** | Stream runtime output for a selected server |
+| **Settings** | View active environment configuration (auth status, signed-in role, API URL, local node ID) |
+
+The current page is highlighted in the sidebar. Auth status and the signed-in role are shown at the bottom of the sidebar.
 
 ## Default local login
 
