@@ -7,6 +7,7 @@ import { ProcessService } from "../services/process-service.js";
 import { AuthService } from "../services/auth-service.js";
 import { NodeService } from "../services/node-service.js";
 import { McpProxyService } from "../services/mcp-proxy-service.js";
+import type { SessionContext } from "../services/mcp-proxy-service.js";
 import { SignatureService } from "../services/signature-service.js";
 import { config } from "../config.js";
 import type { ManagedServer } from "../types/server.js";
@@ -349,12 +350,35 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (!server) return reply.code(404).send({ error: "Server not found" });
 
     try {
+      const user = (request as any).user as { role?: string; email?: string } | undefined;
+      const sessionId = (request.headers["x-mcp-session-id"] as string | undefined) || crypto.randomUUID();
+      const sessionContext: SessionContext = {
+        sessionId,
+        callerRole: user?.role,
+        callerEmail: user?.email
+      };
       const body = request.body && typeof request.body === "object" ? request.body : {};
       const payload = { jsonrpc: "2.0", id: jsonRpcId(), ...(body as object) };
-      const result = await proxy.proxy(server, payload);
+      const result = await proxy.proxyWithSession(server, payload, sessionContext);
+      reply.header("x-mcp-session-id", sessionId);
       return result;
     } catch (error) {
       return reply.code(500).send({ error: error instanceof Error ? error.message : "MCP proxy failed" });
     }
+  });
+
+  app.get("/api/sessions", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin", "operator"]);
+    if (denied) return denied;
+    return proxy.listSessions();
+  });
+
+  app.delete("/api/sessions/:sessionId", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin"]);
+    if (denied) return denied;
+    const { sessionId } = request.params as { sessionId: string };
+    const deleted = proxy.clearSession(sessionId);
+    if (!deleted) return reply.code(404).send({ error: "Session not found" });
+    return { ok: true, sessionId };
   });
 }

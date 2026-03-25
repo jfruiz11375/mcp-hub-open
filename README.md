@@ -78,7 +78,10 @@ It includes:
 - `POST /api/servers/:id/mcp` forwards JSON-RPC payloads to:
   - remote MCP servers over HTTP
   - local stdio MCP servers that are currently running
-- this is implemented as an experimental JSON-RPC gateway layer for development and community extension
+- requests carry an `X-MCP-Session-Id` header; the hub maintains per-session metadata (serverId, timestamps, request count)
+- caller identity (`X-MCP-Caller-Role`, `X-MCP-Caller-Email`) is forwarded to upstream MCP servers for traceability
+- `GET /api/sessions` lists all active proxy sessions (admin/operator)
+- `DELETE /api/sessions/:sessionId` clears a session (admin)
 
 ### Signed package verification
 - checksum verification mode validates a target file with SHA-256
@@ -222,7 +225,7 @@ Recommended next steps:
 - move users, nodes, and server registry into a database
 - replace local encrypted secrets with a managed vault
 - add signed release workflows in CI
-- stream MCP proxy traffic with session-aware transports
+- stream MCP proxy traffic with session-aware transports (implemented: `X-MCP-Session-Id` header tracking, per-session metadata, caller identity forwarding)
 - add agent/worker processes for real remote node execution
 - add audit trails and approval workflows
 
@@ -245,7 +248,7 @@ Recommended next steps:
 - [x] Checksum/signature verification hooks
 - [ ] remote agent process for true multi-node execution
 - [x] validated OIDC token verification
-- [ ] session-aware streaming proxy
+- [x] session-aware streaming proxy
 
 ### Phase 3
 - [ ] approval workflows
