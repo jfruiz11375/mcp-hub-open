@@ -15,6 +15,7 @@ export const config = {
   dataFile: path.join(dataDir, "data", "servers.json"),
   usersFile: path.join(dataDir, "data", "users.json"),
   nodesFile: path.join(dataDir, "data", "nodes.json"),
+  agentsFile: path.join(dataDir, "data", "agents.json"),
   logsDir: path.join(dataDir, "logs"),
   localNodeId: process.env.LOCAL_NODE_ID || "node-local",
   allowedGithubHosts: (process.env.ALLOWED_GITHUB_HOSTS || "github.com")
