@@ -244,7 +244,7 @@ Recommended next steps:
 - [x] Experimental MCP proxy endpoint
 - [x] Checksum/signature verification hooks
 - [ ] remote agent process for true multi-node execution
-- [ ] validated OIDC token verification
+- [x] validated OIDC token verification
 - [ ] session-aware streaming proxy
 
 ### Phase 3
