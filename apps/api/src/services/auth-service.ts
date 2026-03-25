@@ -4,6 +4,80 @@ import path from "node:path";
 import { config } from "../config.js";
 import type { UserRecord, UsersFile, UserRole } from "../types/auth.js";
 
+// Module-level JWKS cache: jwksUri -> { kid -> JWK }
+const jwksCache = new Map<string, Record<string, crypto.JsonWebKey>>();
+
+async function fetchJwks(jwksUri: string): Promise<Record<string, crypto.JsonWebKey>> {
+  const cached = jwksCache.get(jwksUri);
+  if (cached) return cached;
+  const response = await fetch(jwksUri);
+  if (!response.ok) throw new Error("Failed to fetch JWKS");
+  const { keys } = (await response.json()) as { keys: Array<crypto.JsonWebKey & { kid?: string }> };
+  const keyMap: Record<string, crypto.JsonWebKey> = {};
+  for (const key of keys) {
+    if (key.kid) keyMap[key.kid] = key;
+  }
+  jwksCache.set(jwksUri, keyMap);
+  return keyMap;
+}
+
+async function validateIdToken(
+  idToken: string,
+  jwksUri: string,
+  expectedIssuer: string,
+  expectedAudience: string
+): Promise<Record<string, any>> {
+  const parts = idToken.split(".");
+  if (parts.length !== 3) throw new Error("Invalid id_token format");
+
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+
+  const header = JSON.parse(Buffer.from(encodedHeader, "base64url").toString("utf8")) as {
+    kid?: string;
+    alg?: string;
+  };
+  const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Record<string, any>;
+
+  if (!header.alg) throw new Error("id_token missing alg header");
+  if (header.alg !== "RS256") throw new Error(`Unsupported id_token algorithm: ${header.alg}`);
+  if (!header.kid) throw new Error("id_token missing kid header");
+
+  const normalizeIssuer = (iss: string) => iss.replace(/\/$/, "");
+  if (!payload.iss || normalizeIssuer(payload.iss as string) !== normalizeIssuer(expectedIssuer)) {
+    throw new Error(`id_token issuer mismatch: expected ${expectedIssuer}, got ${payload.iss}`);
+  }
+
+  const aud: unknown[] = Array.isArray(payload.aud)
+    ? payload.aud
+    : payload.aud != null
+      ? [payload.aud]
+      : [];
+  if (!aud.includes(expectedAudience)) {
+    throw new Error("id_token audience does not include the configured client_id");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const CLOCK_SKEW_TOLERANCE = 60;
+  if (typeof payload.exp !== "number" || payload.exp <= now) {
+    throw new Error("id_token has expired");
+  }
+  if (typeof payload.iat !== "number" || payload.iat > now + CLOCK_SKEW_TOLERANCE) {
+    throw new Error("id_token iat is in the future");
+  }
+
+  const keyMap = await fetchJwks(jwksUri);
+  const jwk = keyMap[header.kid];
+  if (!jwk) throw new Error(`No matching JWK found for kid: ${header.kid}`);
+
+  const publicKey = crypto.createPublicKey({ key: jwk, format: "jwk" });
+  const verifier = crypto.createVerify("RSA-SHA256");
+  verifier.update(`${encodedHeader}.${encodedPayload}`);
+  const isValid = verifier.verify(publicKey, encodedSignature, "base64url");
+  if (!isValid) throw new Error("id_token signature verification failed");
+
+  return payload;
+}
+
 function base64url(input: string | Buffer): string {
   return Buffer.from(input).toString("base64url");
 }
@@ -122,7 +196,11 @@ export class AuthService {
 
     const metadataResponse = await fetch(`${config.oidcIssuer.replace(/\/$/, "")}/.well-known/openid-configuration`);
     if (!metadataResponse.ok) throw new Error("Failed to load OIDC metadata");
-    const metadata = await metadataResponse.json() as { token_endpoint: string; userinfo_endpoint?: string };
+    const metadata = (await metadataResponse.json()) as {
+      token_endpoint: string;
+      userinfo_endpoint?: string;
+      jwks_uri?: string;
+    };
 
     const tokenResponse = await fetch(metadata.token_endpoint, {
       method: "POST",
@@ -137,15 +215,30 @@ export class AuthService {
     });
 
     if (!tokenResponse.ok) throw new Error("Failed to exchange OIDC code");
-    const tokenPayload = await tokenResponse.json() as { access_token?: string; id_token?: string };
-    let profile: { email?: string; name?: string } = {};
+    const tokenPayload = (await tokenResponse.json()) as { access_token?: string; id_token?: string };
+
+    if (!tokenPayload.id_token) throw new Error("OIDC token response did not include an id_token");
+    if (!metadata.jwks_uri) throw new Error("OIDC metadata did not include a jwks_uri");
+
+    const idTokenClaims = await validateIdToken(
+      tokenPayload.id_token,
+      metadata.jwks_uri,
+      config.oidcIssuer,
+      config.oidcClientId
+    );
+
+    let profile: { email?: string; name?: string } = {
+      email: typeof idTokenClaims.email === "string" ? idTokenClaims.email : undefined,
+      name: typeof idTokenClaims.name === "string" ? idTokenClaims.name : undefined
+    };
 
     if (metadata.userinfo_endpoint && tokenPayload.access_token) {
       const userinfoResponse = await fetch(metadata.userinfo_endpoint, {
         headers: { Authorization: `Bearer ${tokenPayload.access_token}` }
       });
       if (userinfoResponse.ok) {
-        profile = await userinfoResponse.json() as { email?: string; name?: string };
+        const userinfo = (await userinfoResponse.json()) as { email?: string; name?: string };
+        profile = { email: userinfo.email ?? profile.email, name: userinfo.name ?? profile.name };
       }
     }
 
