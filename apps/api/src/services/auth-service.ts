@@ -176,6 +176,10 @@ export class AuthService {
     return signJwt({ sub: user.id, email: user.email, role: user.role, name: user.name }, config.jwtSecret);
   }
 
+  issueAgentToken(agentId: string): string {
+    return signJwt({ sub: agentId, type: "agent" }, config.jwtSecret, 365 * 24 * 60 * 60);
+  }
+
   verifyToken(token: string) {
     return verifyJwt(token, config.jwtSecret);
   }

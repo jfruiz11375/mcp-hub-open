@@ -47,6 +47,7 @@ It includes:
 - basic multi-node registry and heartbeats
 - experimental MCP JSON-RPC proxy route
 - checksum and detached-signature verification hooks
+- agent/worker processes for remote node execution with JWT authentication and revocation
 
 ## Included security and platform features
 
@@ -87,14 +88,30 @@ It includes:
 - checksum verification mode validates a target file with SHA-256
 - signature verification mode validates a detached signature over a manifest using a PEM public key
 
+### Agent/worker processes
+- agents are lightweight workers that can be deployed to remote nodes for executing workloads
+- each agent is registered with the hub and receives a signed JWT for authenticating back to the hub
+- agents authenticate all requests using a `Bearer <agent-token>` header
+- tokens are revocable without deleting agent metadata (full audit trail preserved)
+- agents declare capabilities (e.g. `execute`, `proxy`, `logs`) and can be labelled for targeting
+- agents send periodic heartbeats to the hub to report liveness
+- admin/operator roles can dispatch commands to an agent via `POST /api/agents/:id/dispatch`
+- agent API endpoints:
+  - `POST /api/agents` — register a new agent (admin)
+  - `GET /api/agents` — list all agents (admin/operator)
+  - `POST /api/agents/:id/revoke` — revoke an agent token (admin)
+  - `DELETE /api/agents/:id` — delete an agent record (admin)
+  - `POST /api/agents/:id/dispatch` — dispatch a workload to an agent (admin/operator)
+  - `POST /api/agents/auth/heartbeat` — agent heartbeat endpoint (agent-authenticated)
+
 ## Architecture
 
 ```text
 apps/
-  api/   -> Fastify backend, auth, vault, registry, git installer, process manager, MCP proxy
+  api/   -> Fastify backend, auth, vault, registry, git installer, process manager, MCP proxy, agent service
   web/   -> React UI for server management
 runtime/
-  data/      -> server registry JSON, users, nodes
+  data/      -> server registry JSON, users, nodes, agents
   repos/     -> cloned MCP repos
   logs/      -> log files per server
 ```
@@ -204,6 +221,14 @@ Key examples:
 - `POST /api/nodes/register`
 - `POST /api/nodes/:id/heartbeat`
 
+### Agents
+- `POST /api/agents`
+- `GET /api/agents`
+- `POST /api/agents/:id/revoke`
+- `DELETE /api/agents/:id`
+- `POST /api/agents/:id/dispatch`
+- `POST /api/agents/auth/heartbeat`
+
 ### Servers
 - `GET /api/servers`
 - `POST /api/servers`
@@ -226,7 +251,7 @@ Recommended next steps:
 - replace local encrypted secrets with a managed vault
 - add signed release workflows in CI
 - stream MCP proxy traffic with session-aware transports (implemented: `X-MCP-Session-Id` header tracking, per-session metadata, caller identity forwarding)
-- add agent/worker processes for real remote node execution
+- agent/worker processes for remote node execution (implemented)
 - add audit trails and approval workflows
 
 ## Suggested roadmap
@@ -246,7 +271,7 @@ Recommended next steps:
 - [x] Node registry + heartbeats
 - [x] Experimental MCP proxy endpoint
 - [x] Checksum/signature verification hooks
-- [ ] remote agent process for true multi-node execution
+- [x] remote agent process for true multi-node execution
 - [x] validated OIDC token verification
 - [x] session-aware streaming proxy
 

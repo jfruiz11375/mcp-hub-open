@@ -6,6 +6,7 @@ import { GitService } from "../services/git-service.js";
 import { ProcessService } from "../services/process-service.js";
 import { AuthService } from "../services/auth-service.js";
 import { NodeService } from "../services/node-service.js";
+import { AgentService } from "../services/agent-service.js";
 import { McpProxyService } from "../services/mcp-proxy-service.js";
 import type { SessionContext } from "../services/mcp-proxy-service.js";
 import { SignatureService } from "../services/signature-service.js";
@@ -70,6 +71,19 @@ const loginSchema = z.object({
   password: z.string().min(1)
 });
 
+const createAgentSchema = z.object({
+  name: z.string().min(1),
+  nodeId: z.string().min(1),
+  capabilities: z.array(z.string()).default(["execute"]),
+  labels: z.record(z.string()).default({})
+});
+
+const dispatchSchema = z.object({
+  command: z.string().min(1),
+  env: z.record(z.string()).optional(),
+  timeout: z.number().int().positive().optional()
+});
+
 async function requireRole(request: FastifyRequest, reply: FastifyReply, roles: UserRole[]) {
   if (!config.requireAuth) return;
   const authHeader = request.headers.authorization;
@@ -99,11 +113,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
   const processes = new ProcessService();
   const auth = new AuthService();
   const nodes = new NodeService();
+  const agents = new AgentService();
   const proxy = new McpProxyService(processes);
   const signatures = new SignatureService();
 
   await auth.ensureStore();
   await nodes.ensureStore();
+  await agents.ensureStore();
 
   app.get("/api/health", async () => ({ ok: true, time: new Date().toISOString(), authRequired: config.requireAuth }));
   app.get("/api/auth/providers", async () => ({ local: true, oidc: Boolean(config.oidcIssuer && config.oidcClientId) }));
@@ -380,5 +396,69 @@ export async function registerServerRoutes(app: FastifyInstance) {
     const deleted = proxy.clearSession(sessionId);
     if (!deleted) return reply.code(404).send({ error: "Session not found" });
     return { ok: true, sessionId };
+  });
+
+  app.post("/api/agents", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin"]);
+    if (denied) return denied;
+    const payload = createAgentSchema.parse(request.body);
+    const result = await agents.createAgent(payload);
+    return reply.code(201).send(result);
+  });
+
+  app.get("/api/agents", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin", "operator"]);
+    if (denied) return denied;
+    return agents.listAgents();
+  });
+
+  app.post("/api/agents/:id/revoke", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin"]);
+    if (denied) return denied;
+    try {
+      return await agents.revokeAgent((request.params as { id: string }).id);
+    } catch (error) {
+      return reply.code(404).send({ error: error instanceof Error ? error.message : "Agent not found" });
+    }
+  });
+
+  app.delete("/api/agents/:id", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin"]);
+    if (denied) return denied;
+    try {
+      await agents.deleteAgent((request.params as { id: string }).id);
+      return { ok: true };
+    } catch (error) {
+      return reply.code(404).send({ error: error instanceof Error ? error.message : "Agent not found" });
+    }
+  });
+
+  app.post("/api/agents/:id/dispatch", async (request, reply) => {
+    const denied = await requireRole(request, reply, ["admin", "operator"]);
+    if (denied) return denied;
+    const payload = dispatchSchema.parse(request.body);
+    try {
+      return await agents.dispatch((request.params as { id: string }).id, payload);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Dispatch failed";
+      const status = msg.startsWith("Agent not found") ? 404 : 400;
+      return reply.code(status).send({ error: msg });
+    }
+  });
+
+  app.post("/api/agents/auth/heartbeat", async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return reply.code(401).send({ error: "Missing bearer token" });
+    }
+    const token = authHeader.slice("Bearer ".length);
+    try {
+      const agent = await agents.heartbeat(token);
+      return { ok: true, agentId: agent.id, lastHeartbeatAt: agent.lastHeartbeatAt };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Heartbeat failed";
+      const status = msg.includes("revoked") || msg.includes("Invalid") ? 401 : 404;
+      return reply.code(status).send({ error: msg });
+    }
   });
 }
