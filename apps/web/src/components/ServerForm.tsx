@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
-import type { IsolationMode, RuntimeKind, TransportType, VerificationMode } from "../lib/api";
+import { useEffect, useMemo, useState } from "react";
+import type { IsolationMode, ManagedServer, RuntimeKind, TransportType, VerificationMode } from "../lib/api";
 
 interface Props {
+  editingServer?: ManagedServer | null;
   onCreate: (payload: {
     id: string;
     name: string;
     description?: string;
     repoUrl?: string;
     branch?: string;
+    subdirectory?: string;
     runtimeKind: RuntimeKind;
     transportType: TransportType;
     installCommand?: string;
@@ -19,12 +21,33 @@ interface Props {
     packageVerification?: { mode: VerificationMode; targetPath?: string; expectedSha256?: string; manifestPath?: string; signaturePath?: string; publicKeyPem?: string };
     env: { key: string; value: string; secret?: boolean }[];
   }) => Promise<void>;
+  onUpdate?: (
+    id: string,
+    payload: {
+      name: string;
+      repoUrl?: string;
+      branch?: string;
+      subdirectory?: string;
+      runtimeKind: RuntimeKind;
+      transportType: TransportType;
+      installCommand?: string;
+      buildCommand?: string;
+      startCommand?: string;
+      remoteUrl?: string;
+      targetNodeId?: string;
+      isolation?: { mode: IsolationMode; dockerImage?: string };
+      packageVerification?: { mode: VerificationMode; targetPath?: string; expectedSha256?: string; manifestPath?: string; signaturePath?: string; publicKeyPem?: string };
+      env: { key: string; value: string; secret?: boolean }[];
+    }
+  ) => Promise<void>;
+  onCancelEdit?: () => void;
 }
 
-export function ServerForm({ onCreate }: Props) {
+export function ServerForm({ editingServer, onCreate, onUpdate, onCancelEdit }: Props) {
   const [name, setName] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("main");
+  const [subdirectory, setSubdirectory] = useState("");
   const [runtimeKind, setRuntimeKind] = useState<RuntimeKind>("node");
   const [transportType, setTransportType] = useState<TransportType>("stdio");
   const [installCommand, setInstallCommand] = useState("npm install");
@@ -53,6 +76,64 @@ export function ServerForm({ onCreate }: Props) {
     [name]
   );
 
+  const effectiveId = editingServer?.id || id;
+
+  function applyServerToForm(server: ManagedServer) {
+    setName(server.name);
+    setRepoUrl(server.repoUrl || "");
+    setBranch(server.branch || "main");
+    setSubdirectory(server.subdirectory || "");
+    setRuntimeKind(server.runtimeKind);
+    setTransportType(server.transportType);
+    setInstallCommand(server.installCommand || "npm install");
+    setBuildCommand(server.buildCommand || "npm run build");
+    setStartCommand(server.startCommand || "node dist/index.js");
+    setRemoteUrl(server.remoteUrl || "");
+    setTargetNodeId(server.targetNodeId || "node-local");
+    setIsolationMode(server.isolation?.mode || "process");
+    setDockerImage(server.isolation?.dockerImage || "node:20-alpine");
+    const verification = server.packageVerification?.mode || "none";
+    setVerificationMode(verification);
+    setTargetPath(server.packageVerification?.targetPath || "package.json");
+    setExpectedSha256(server.packageVerification?.expectedSha256 || "");
+    setManifestPath(server.packageVerification?.manifestPath || "release-manifest.json");
+    setSignaturePath(server.packageVerification?.signaturePath || "release-manifest.sig");
+    setPublicKeyPem(server.packageVerification?.publicKeyPem || "");
+    setEnvText(
+      (server.env || [])
+        .map((item) => `${item.key}=${item.value}`)
+        .join("\n") || "LOG_LEVEL=info"
+    );
+  }
+
+  function resetForm() {
+    setName("");
+    setRepoUrl("");
+    setBranch("main");
+    setSubdirectory("");
+    setRuntimeKind("node");
+    setTransportType("stdio");
+    setInstallCommand("npm install");
+    setBuildCommand("npm run build");
+    setStartCommand("node dist/index.js");
+    setRemoteUrl("");
+    setTargetNodeId("node-local");
+    setIsolationMode("process");
+    setDockerImage("node:20-alpine");
+    setVerificationMode("none");
+    setExpectedSha256("");
+    setPublicKeyPem("");
+    setEnvText("LOG_LEVEL=info");
+  }
+
+  useEffect(() => {
+    if (editingServer) {
+      applyServerToForm(editingServer);
+    } else {
+      resetForm();
+    }
+  }, [editingServer?.id]);
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -66,11 +147,17 @@ export function ServerForm({ onCreate }: Props) {
           return { key: key.trim(), value: rest.join("=").trim(), secret: /password|secret|token/i.test(key) };
         });
 
-      await onCreate({
-        id,
+      const packageVerification = verificationMode === "none"
+        ? { mode: "none" as const }
+        : verificationMode === "checksum"
+          ? { mode: "checksum" as const, targetPath, expectedSha256 }
+          : { mode: "signature" as const, manifestPath, signaturePath, publicKeyPem };
+
+      const payload = {
         name,
         repoUrl: repoUrl || undefined,
         branch,
+        subdirectory: subdirectory || undefined,
         runtimeKind,
         transportType,
         installCommand: transportType === "stdio" || isolationMode === "docker" ? installCommand : undefined,
@@ -79,30 +166,16 @@ export function ServerForm({ onCreate }: Props) {
         remoteUrl: transportType === "streamable-http" ? remoteUrl : undefined,
         targetNodeId,
         isolation: { mode: isolationMode, dockerImage: isolationMode === "docker" ? dockerImage : undefined },
-        packageVerification: verificationMode === "none"
-          ? { mode: "none" }
-          : verificationMode === "checksum"
-            ? { mode: verificationMode, targetPath, expectedSha256 }
-            : { mode: verificationMode, manifestPath, signaturePath, publicKeyPem },
+        packageVerification,
         env
-      });
+      };
 
-      setName("");
-      setRepoUrl("");
-      setBranch("main");
-      setRuntimeKind("node");
-      setTransportType("stdio");
-      setInstallCommand("npm install");
-      setBuildCommand("npm run build");
-      setStartCommand("node dist/index.js");
-      setRemoteUrl("");
-      setTargetNodeId("node-local");
-      setIsolationMode("process");
-      setDockerImage("node:20-alpine");
-      setVerificationMode("none");
-      setExpectedSha256("");
-      setPublicKeyPem("");
-      setEnvText("LOG_LEVEL=info");
+      if (editingServer && onUpdate) {
+        await onUpdate(editingServer.id, payload);
+      } else {
+        await onCreate({ id: effectiveId, ...payload });
+        resetForm();
+      }
     } finally {
       setSaving(false);
     }
@@ -112,7 +185,7 @@ export function ServerForm({ onCreate }: Props) {
     <form className="card form-card" onSubmit={handleSubmit}>
       <div className="section-header compact">
         <div>
-          <h2>Add MCP Server</h2>
+          <h2>{editingServer ? "Edit MCP Server" : "Add MCP Server"}</h2>
           <p className="muted">Registry, isolation, and verification controls</p>
         </div>
       </div>
@@ -124,7 +197,7 @@ export function ServerForm({ onCreate }: Props) {
 
       <label>
         Generated ID
-        <input value={id} readOnly />
+        <input value={effectiveId} readOnly />
       </label>
 
       <label>
@@ -138,6 +211,17 @@ export function ServerForm({ onCreate }: Props) {
           <input value={branch} onChange={(event) => setBranch(event.target.value)} />
         </label>
 
+        <label>
+          Subdirectory
+          <input
+            value={subdirectory}
+            onChange={(event) => setSubdirectory(event.target.value)}
+            placeholder="e.g. src/dbtools-mcp-server"
+          />
+        </label>
+      </div>
+
+      <div className="grid-two">
         <label>
           Target Node
           <input value={targetNodeId} onChange={(event) => setTargetNodeId(event.target.value)} />
@@ -253,9 +337,21 @@ export function ServerForm({ onCreate }: Props) {
         <textarea rows={6} value={envText} onChange={(event) => setEnvText(event.target.value)} />
       </label>
 
-      <button className="primary" type="submit" disabled={!id || saving}>
-        {saving ? "Saving..." : "Create Server"}
-      </button>
+      <div className="button-row">
+        <button className="primary" type="submit" disabled={!effectiveId || saving}>
+          {saving ? "Saving..." : editingServer ? "Update Server" : "Create Server"}
+        </button>
+        {editingServer && (
+          <button
+            type="button"
+            onClick={() => {
+              onCancelEdit?.();
+            }}
+          >
+            Cancel Edit
+          </button>
+        )}
+      </div>
     </form>
   );
 }
