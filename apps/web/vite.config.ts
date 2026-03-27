@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), basicSsl()],
   server: {
     port: Number(process.env.WEB_PORT || 5173),
-    https: true,
+    https: {},
     proxy: {
       "/api": {
         target: `http://localhost:${process.env.API_PORT || 4010}`,

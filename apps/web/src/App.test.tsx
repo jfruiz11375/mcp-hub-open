@@ -10,6 +10,8 @@ vi.mock("./lib/api", () => ({
     getLogs: vi.fn(),
     login: vi.fn(),
     createServer: vi.fn(),
+    updateServer: vi.fn(),
+    deleteServer: vi.fn(),
     installServer: vi.fn(),
     startServer: vi.fn(),
     stopServer: vi.fn(),
