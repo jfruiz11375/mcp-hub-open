@@ -24,9 +24,9 @@ describe("vite.config", () => {
     expect(plugins.some(isBasicSslPlugin)).toBe(true);
   });
 
-  it("server.https is true", async () => {
+  it("server.https is enabled", async () => {
     const { default: config } = await import("../vite.config");
-    expect(config.server?.https).toBe(true);
+    expect(config.server?.https).toEqual({});
   });
 
   it("server.port defaults to 5173 when WEB_PORT is not set", async () => {

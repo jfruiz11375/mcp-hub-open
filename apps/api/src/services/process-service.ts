@@ -1,10 +1,10 @@
 import fs from "fs-extra";
 import path from "node:path";
-import { execa, type ExecaChildProcess } from "execa";
+import { execa, type Subprocess } from "execa";
 import { config } from "../config.js";
 import type { ManagedServer } from "../types/server.js";
 
-const processes = new Map<string, ExecaChildProcess>();
+const processes = new Map<string, Subprocess>();
 const stdoutBuffers = new Map<string, string>();
 const pendingRequests = new Map<string, Map<string | number, { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout: NodeJS.Timeout }>>();
 
@@ -38,11 +38,11 @@ export class ProcessService {
     return processes.has(id);
   }
 
-  private attachStdoutParsing(serverId: string, child: ExecaChildProcess) {
+  private attachStdoutParsing(serverId: string, child: Subprocess) {
     stdoutBuffers.set(serverId, "");
     pendingRequests.set(serverId, new Map());
 
-    child.stdout?.on("data", (chunk) => {
+    child.stdout?.on("data", (chunk: Buffer) => {
       const current = `${stdoutBuffers.get(serverId) || ""}${chunk.toString()}`;
       const lines = current.split(/\r?\n/);
       stdoutBuffers.set(serverId, lines.pop() || "");
@@ -117,7 +117,8 @@ export class ProcessService {
   async stop(id: string): Promise<void> {
     const child = processes.get(id);
     if (!child) return;
-    child.kill("SIGTERM", { forceKillAfterDelay: 5000 });
+    child.kill("SIGTERM");
+    setTimeout(() => child.kill("SIGKILL"), 5000);
     processes.delete(id);
   }
 
