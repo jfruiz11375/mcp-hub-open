@@ -69,9 +69,11 @@ export function setToken(value: string | null) {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(init?.headers as Record<string, string> | undefined)
   };
+  if (init?.body) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -102,6 +104,9 @@ export const api = {
   listServers: () => request<ManagedServer[]>("/api/servers"),
   createServer: (payload: Omit<ManagedServer, "status" | "createdAt" | "updatedAt">) =>
     request<ManagedServer>("/api/servers", { method: "POST", body: JSON.stringify(payload) }),
+  updateServer: (id: string, payload: Partial<Omit<ManagedServer, "status" | "createdAt" | "updatedAt">>) =>
+    request<ManagedServer>(`/api/servers/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteServer: (id: string) => request<void>(`/api/servers/${id}`, { method: "DELETE" }),
   installServer: (id: string) => request(`/api/servers/${id}/install`, { method: "POST" }),
   startServer: (id: string) => request(`/api/servers/${id}/start`, { method: "POST" }),
   stopServer: (id: string) => request(`/api/servers/${id}/stop`, { method: "POST" }),
